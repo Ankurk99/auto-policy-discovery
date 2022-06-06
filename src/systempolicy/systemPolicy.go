@@ -265,7 +265,7 @@ func populateKnoxSysPolicyFromWPFSDb(namespace, clustername, labels, fromsource 
 	}
 	res, pnMap, err := libs.GetWorkloadProcessFileSet(CfgDB, wpfs)
 	if err != nil {
-		log.Error().Msgf("cudnot fetch WPFS err=%s", err.Error())
+		log.Error().Msgf("could not fetch WPFS err=%s", err.Error())
 		return nil
 	}
 	log.Info().Msgf("found %d WPFS records", len(res))
@@ -843,6 +843,10 @@ func ConvertWPFSToKnoxSysPolicy(wpfsSet types.ResourceSetMap, pnMap types.Policy
 
 func getPodInstance(key SysLogKey, pods []types.Pod) (types.Pod, error) {
 	for _, pod := range pods {
+		if key.Namespace != "" || key.PodName != "" {
+			return pod, nil
+		}
+
 		if key.Namespace == pod.Namespace && key.PodName == pod.PodName {
 			return pod, nil
 		}
@@ -1130,7 +1134,10 @@ func PopulateSystemPoliciesFromSystemLogs(sysLogs []types.KnoxSystemLog) []types
 
 func GetPodLabels(cn string, pn string, ns string, pods []types.Pod) ([]string, error) {
 	for _, pod := range pods {
-		if pod.Namespace == ns && pod.PodName == pn {
+		if pod.Namespace == "accuknox-vm-namespace" && pod.PodName == "accuknox-vm-podname" {
+			// ignore labels when the pod is running in un-orchestrated mode
+			return nil, nil
+		} else if pod.Namespace == ns && pod.PodName == pn {
 			return pod.Labels, nil
 		}
 	}
@@ -1260,7 +1267,7 @@ func GenFileSetForAllPodsInCluster(clusterName string, pods []types.Pod, settype
 		wpfs.SetType = settype
 		labels, err := GetPodLabels(slog.ClusterName, slog.PodName, slog.Namespace, pods)
 		if err != nil {
-			log.Error().Msgf("cudnot get pod labels for podname=%s ns=%s", slog.PodName, slog.Namespace)
+			log.Error().Msgf("could not get pod labels for podname=%s ns=%s", slog.PodName, slog.Namespace)
 			continue
 		}
 		wpfs.Labels = strings.Join(labels[:], ",")
@@ -1338,7 +1345,6 @@ func DiscoverSystemPolicyMain() {
 	}
 
 	PopulateSystemPoliciesFromSystemLogs(allSystemkLogs)
-
 }
 
 // ==================================== //
