@@ -156,7 +156,7 @@ func FilterSystemLogsByConfig(logs []types.KnoxSystemLog, pods []types.Pod) []ty
 func GetWPFSSources() []string {
 	res, _, err := libs.GetWorkloadProcessFileSet(CfgDB, types.WorkloadProcessFileSet{})
 	if err != nil {
-		log.Error().Msgf("cudnot fetch WPFS err=%s", err.Error())
+		log.Error().Msgf("could not fetch WPFS err=%s", err.Error())
 		return nil
 	}
 

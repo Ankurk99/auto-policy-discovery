@@ -164,8 +164,8 @@ func ConvertKubeArmorSystemLogsToKnoxSystemLogs(dbDriver string, docs []map[stri
 	if dbDriver == "mysql" {
 		return ConvertMySQLKubeArmorLogsToKnoxSystemLogs(docs)
 	} else if dbDriver == "sqlite3" {
-                return ConvertSQLiteKubeArmorLogsToKnoxSystemLogs(docs)
-        }
+		return ConvertSQLiteKubeArmorLogsToKnoxSystemLogs(docs)
+	}
 
 	return []types.KnoxSystemLog{}
 }
