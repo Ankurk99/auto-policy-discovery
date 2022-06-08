@@ -18,11 +18,7 @@ func ConvertSysInsDataToInsResponse(sysdata ipb.SystemInsightData) ipb.InsightRe
 	locsysinsdata.SysResource = sysdata.SysResource
 
 	insresp.ClusterName = sysdata.ClusterName
-	if sysdata.Namespace == "" {
-		insresp.NameSpace = "accuknox-vm-namespace"
-	} else {
-		insresp.NameSpace = sysdata.Namespace
-	}
+	insresp.NameSpace = sysdata.Namespace
 	insresp.Labels = sysdata.Labels
 	insresp.SystemResource = append(insresp.SystemResource, &locsysinsdata)
 

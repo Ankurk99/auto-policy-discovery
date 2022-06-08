@@ -1263,6 +1263,9 @@ func GenFileSetForAllPodsInCluster(clusterName string, pods []types.Pod, settype
 		wpfs.FromSource = slog.Source
 		wpfs.SetType = settype
 		labels, err := GetPodLabels(slog.ClusterName, slog.PodName, slog.Namespace, pods)
+		if labels == nil {
+			labels = append(labels, "container="+slog.ContainerName)
+		}
 		if err != nil {
 			log.Error().Msgf("could not get pod labels for podname=%s ns=%s", slog.PodName, slog.Namespace)
 			continue
