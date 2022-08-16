@@ -24,7 +24,7 @@ archives:
     name_template: "{{.ProjectName}}_{{.Version}}_{{.Os}}-{{.Arch}}"
     files:
       - src: ./conf/local-file.yaml
-        dst: /opt/knoxAutoPolicy
+        dst: /opt/knoxAutoPolicy/conf
         strip_parent: true
       - src: ./packaging/knoxAutoPolicy.service
         dst: /usr/lib/systemd/system
