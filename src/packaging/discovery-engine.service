@@ -1,0 +1,12 @@
+[Unit]
+Description=discovery-engine
+
+[Service]
+User=root
+KillMode=process
+EnvironmentFile=/opt/discovery-engine/local-file.yaml
+WorkingDirectory=/opt/discovery-engine/
+ExecStart=/opt/discovery-engine/src/discovery-engine
+
+[Install]
+WantedBy=multi-user.target
