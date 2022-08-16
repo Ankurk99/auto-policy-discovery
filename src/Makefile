@@ -10,10 +10,10 @@ GIT_INFO := $(shell govvv -flags -pkg $(PKG))
 
 .PHONY: build
 build:
-	@# for build_image -> CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -ldflags '-s -w' -o knoxAutoPolicy main.go
-	@# for delve -> cd $(CURDIR); go mod tidy; go build -tags debugger -gcflags="all=-N -l" -o knoxAutoPolicy main.go
+	@# for build_image -> CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -ldflags '-s -w' -o discovery-engine main.go
+	@# for delve -> cd $(CURDIR); go mod tidy; go build -tags debugger -gcflags="all=-N -l" -o discovery-engine main.go
 	go mod tidy
-	go build -ldflags "$(GIT_INFO)" -o knoxAutoPolicy main.go
+	go build -ldflags "$(GIT_INFO)" -o discovery-engine main.go
 
 .PHONY: test
 test:
@@ -33,8 +33,19 @@ gosec:
 	
 .PHONY: clean
 clean:
-	cd $(CURDIR); rm -f knoxAutoPolicy go.sum
+	cd $(CURDIR); rm -f discovery-engine go.sum
 
 .PHONY: image
 image:
 	cd $(CURDIR)/build; $(MAKE)
+
+.PHONY: local-release
+local-release: build
+ifeq (, $(shell which goreleaser))
+	@{ \
+	set -e ;\
+	go install github.com/goreleaser/goreleaser@latest ;\
+	}
+endif
+	cd $(CURDIR); VERSION=$(shell git describe --tags --always --dirty) goreleaser release --rm-dist --skip-publish --skip-sign --skip-validate --snapshot
+
