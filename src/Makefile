@@ -38,3 +38,27 @@ clean:
 .PHONY: image
 image:
 	cd $(CURDIR)/build; $(MAKE)
+
+.PHONY: systemd-deb
+systemd-deb: build
+ifeq (, $(shell which nfpm))
+	@{ \
+	set -e ;\
+	go install github.com/goreleaser/nfpm/v2/cmd/nfpm@latest
+	}
+endif
+	cd $(CURDIR); VERSION=$(shell git describe --tags --always --dirty) nfpm pkg --packager deb
+
+.PHONY: systemd-rpm
+systemd-rpm: build
+ifeq (, $(shell which nfpm))
+	@{ \
+	set -e ;\
+	go install github.com/goreleaser/nfpm/v2/cmd/nfpm@latest
+	}
+endif
+	cd $(CURDIR); VERSION=$(shell git describe --tags --always --dirty) nfpm pkg --packager rpm
+
+.PHONY: systemd
+systemd: systemd-deb systemd-rpm
+

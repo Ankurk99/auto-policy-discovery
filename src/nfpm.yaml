@@ -1,0 +1,29 @@
+name: "discovery-engine"
+arch: "${ARCH}"
+platform: "linux"
+version: "${VERSION}"
+section: "default"
+priority: "extra"
+replaces:
+  - discovery-engine
+provides:
+  - discovery-engine
+maintainer: "Ankur Kothiwal <ankur.kothiwal@accuknox.com>"
+description: |
+  Auto policy discovery engine
+contents:
+  - dst: /opt/discovery-engine/src
+    type: dir
+  - src: ./discovery-engine
+    dst: /opt/discovery-engine/src
+  - src: /opt/discovery-engine/src
+    dst: /usr/local/bin/discovery-engine
+    type: symlink
+  - src: ./conf/local-file.yaml
+    dst: /opt/discovery-engine/local-file.yaml
+    type: config
+  - src: ./packaging/discovery-engine.service
+    dst: /usr/lib/systemd/system/discovery-engine.service
+    type: config
+scripts:
+  postinstall: packaging/postinstall.sh
