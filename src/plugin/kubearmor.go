@@ -561,15 +561,13 @@ func GetSystemLogsFromFeedConsumer(trigger int) []*types.KnoxSystemLog {
 
 func GetNetworkLogsFromKubeArmor() []*pb.Alert {
 	KubeArmorRelayLogsMutex.Lock()
-	if len(KubeArmorNetworkLogs) <= 0 {
-		KubeArmorRelayLogsMutex.Unlock()
-		return nil
-	}
-
 	results := KubeArmorNetworkLogs      // copy
 	KubeArmorNetworkLogs = []*pb.Alert{} // reset
-
 	KubeArmorRelayLogsMutex.Unlock()
+
+	if len(results) <= 0 {
+		return nil
+	}
 
 	log.Info().Msgf("The total number of KubeArmor network log : [%d]", len(results))
 

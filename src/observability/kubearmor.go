@@ -68,18 +68,14 @@ func clearKubeArmorLogMap() {
 }
 
 func ProcessSystemLogs() {
-
 	SystemLogsMutex.Lock()
-	if len(SystemLogs) <= 0 {
-		// we are using Unlock instead of defer Unlock to immediately release the variable in order to
-		// prevent the log channel from filling up
-		SystemLogsMutex.Unlock()
-		return
-	}
-
 	locSysLogs := SystemLogs
 	SystemLogs = []*pb.Alert{} //reset
 	SystemLogsMutex.Unlock()
+
+	if len(SystemLogs) <= 0 {
+		return
+	}
 
 	ObsMutex.Lock()
 	defer ObsMutex.Unlock()
