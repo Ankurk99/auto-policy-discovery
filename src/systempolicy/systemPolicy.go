@@ -2,6 +2,7 @@ package systempolicy
 
 import (
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -511,9 +512,11 @@ func discoverFileOperationPolicy(results []types.KnoxSystemPolicy, pod types.Pod
 		if val, ok := srcToDest[log.Source]; ok {
 			if !libs.ContainsElement(val, log.Resource) {
 				srcToDest[log.Source] = append(srcToDest[log.Source], log.Resource)
+				fmt.Println("\n\nsrcToDest:", srcToDest)
 			}
 		} else {
 			srcToDest[log.Source] = []string{log.Resource}
+			fmt.Println("\n\nelse srcToDest:\n\n", srcToDest)
 		}
 	}
 
@@ -525,10 +528,13 @@ func discoverFileOperationPolicy(results []types.KnoxSystemPolicy, pod types.Pod
 	// step 3: aggregate file paths
 	for src, filePaths := range srcToDest {
 		aggregatedFilePaths := common.AggregatePaths(filePaths)
+		fmt.Println("\n\nfilePaths:", filePaths)
 
 		// step 4: append spec to the policy
 		for _, filePath := range aggregatedFilePaths {
 			appended = true
+			// policy = updateSysPolicySpec(SYS_OP_FILE, policy, src, filePath)
+			fmt.Println("\n\n----\n\n-------FILEPATH:", filePath)
 			policy = updateSysPolicySpec(SYS_OP_FILE, policy, src, filePath)
 		}
 	}
@@ -1115,6 +1121,7 @@ func PopulateSystemPoliciesFromSystemLogs(sysLogs []types.KnoxSystemLog) []types
 			isWpfsDbUpdated := false
 			// 1. discover file operation system policy
 			if SystemPolicyTypes&SYS_OP_FILE_INT > 0 {
+				log.Info().Msgf("----\n\n.........................DISCOVER FILE OP POLICY called---------\n\n")
 				fileOpLogs := getOperationLogs(SYS_OP_FILE, perPodlogs)
 				isWpfsDbUpdated = GenFileSetForAllPodsInCluster(clusterName, pods, SYS_OP_FILE, fileOpLogs) || isWpfsDbUpdated
 				if !cfg.CurrentCfg.ConfigSysPolicy.DeprecateOldMode {
@@ -1452,8 +1459,8 @@ func DiscoverSystemPolicyMain() {
 	if allSystemkLogs == nil {
 		return
 	}
-
 	PopulateSystemPoliciesFromSystemLogs(allSystemkLogs)
+	fmt.Println("Discovered policy: ", PopulateSystemPoliciesFromSystemLogs(allSystemkLogs))
 }
 
 // ==================================== //

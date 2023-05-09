@@ -343,8 +343,14 @@ func GetSystemAlertsFromKubeArmorRelay(trigger int) []*pb.Alert {
 		KubeArmorRelayLogsMutex.Unlock()
 		return results
 	}
+	// fmt.Println("\n\n\n----*********** KubeArmorRelayLogs ***********----\n\n\n", KubeArmorRelayLogs)
+	results = KubeArmorRelayLogs // copy
 
-	results = KubeArmorRelayLogs       // copy
+	// for _, log := range KubeArmorRelayLogs {
+	// 	resource := log.Resource
+	// 	fmt.Println("\n\n\n------------- RESOURCE ----------**\n\n\n", resource)
+	// }
+
 	KubeArmorRelayLogs = []*pb.Alert{} // reset
 	KubeArmorRelayLogsMutex.Unlock()
 

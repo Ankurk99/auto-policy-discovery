@@ -6,6 +6,7 @@ import (
 	"github.com/accuknox/auto-policy-discovery/src/admissioncontrollerpolicy"
 	"github.com/accuknox/auto-policy-discovery/src/cluster"
 	cfg "github.com/accuknox/auto-policy-discovery/src/config"
+	"github.com/accuknox/auto-policy-discovery/src/crownjewel"
 	logger "github.com/accuknox/auto-policy-discovery/src/logging"
 	"github.com/accuknox/auto-policy-discovery/src/systempolicy"
 	"github.com/accuknox/auto-policy-discovery/src/types"
@@ -176,8 +177,19 @@ func RecommendPolicyMain() {
 			isNamespaceAllowed(d.Namespace, nsNotFilterAdmissionControllerPolicy, nsFilterAdmissionControllerPolicy) {
 			generateAdmissionControllerPolicy(d.Name, d.Namespace, d.Spec.Template.Labels)
 		}
-	}
 
+		// crownjewel.GetMountPaths(client)
+
+		mountPaths, err := crownjewel.GetMountPaths(client, d.Name, d.Namespace, d.Spec.Template.Labels)
+		if err != nil {
+			log.Error().Msg("Error getting mount paths, err=" + err.Error())
+		}
+		log.Info().Msg("\n\n\n^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
+
+		// print the mount paths
+		log.Info().Msgf("Mount paths: %v\n", mountPaths)
+		log.Info().Msgf("\n\n\n$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$\n\n")
+	}
 }
 
 func generateHardenPolicy(name, namespace string, labels LabelMap) []types.KnoxSystemPolicy {
@@ -199,6 +211,11 @@ func generateAdmissionControllerPolicy(name, namespace string, labels LabelMap) 
 	// deriving labels back from preconditions is error prone due to presence of other preconditions
 	admissioncontrollerpolicy.UpdateOrInsertKyvernoPolicies(policies, labels)
 }
+
+// func generateCrownJewel(name, namespace string, labels LabelMap) {
+// 	log.Info().Msgf("Generating crown jewel policy for: %v in namespace: %v", name, namespace)
+
+// }
 
 func uniqueNsDeploy(deployName, deployNamespace string) *types.Deployment {
 

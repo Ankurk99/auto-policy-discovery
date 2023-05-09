@@ -4,8 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/accuknox/auto-policy-discovery/src/admissioncontrollerpolicy"
 	"strings"
+
+	"github.com/accuknox/auto-policy-discovery/src/admissioncontrollerpolicy"
 
 	"github.com/clarketm/json"
 	kyvernov1 "github.com/kyverno/kyverno/api/kyverno/v1"
@@ -52,7 +53,6 @@ func getNextRule(idx *int) (types.MatchSpec, error) {
 }
 
 func genericPolicy(precondition []string) bool {
-
 	for _, preCondition := range precondition {
 		if strings.Contains(preCondition, "OPTSCAN") {
 			return true
@@ -61,8 +61,24 @@ func genericPolicy(precondition []string) bool {
 	return false
 }
 
-func generateKnoxSystemPolicy(name, namespace string, labels LabelMap) ([]types.KnoxSystemPolicy, error) {
+// func generateCrownJewel(name, namespace string, labels LabelMap) ([]types.KnoxSystemPolicy, error) {
+// 	var ms types.MatchSpec
+// 	var err error
+// 	var policies []types.KnoxSystemPolicy
+// 	idx := 0
+// 	ms, err = getNextRule(&idx)
+// 	for ; err == nil; ms, err = getNextRule(&idx) {
 
+// 	}
+// }
+
+// Steps:
+// Get the mount points [Done]
+// check if volume matches volumemounts (go-client) [later]
+// (Use pods)
+// Query the summary/db for checking if the mount point is used/accessed -
+
+func generateKnoxSystemPolicy(name, namespace string, labels LabelMap) ([]types.KnoxSystemPolicy, error) {
 	var ms types.MatchSpec
 	var err error
 	var policies []types.KnoxSystemPolicy

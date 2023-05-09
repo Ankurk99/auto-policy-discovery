@@ -1,6 +1,11 @@
 package main
 
 import (
+	"math/rand"
+	"net"
+	"os"
+	"time"
+
 	"github.com/accuknox/auto-policy-discovery/src/cluster"
 	"github.com/accuknox/auto-policy-discovery/src/config"
 	"github.com/accuknox/auto-policy-discovery/src/libs"
@@ -10,10 +15,6 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
-	"math/rand"
-	"net"
-	"os"
-	"time"
 )
 
 var cfg cluster.Config
@@ -55,20 +56,23 @@ func init() {
 func main() {
 
 	lis, server := CreateListenerAndGrpcServer()
-	// add license server
-	server = grpcserver.AddLicenseServer(server)
 
-	// check for license secret, if exist then validate
-	err := license.CheckLicenseSecret()
+	if license.LCfg.Enabled {
+		// add license server
+		server = grpcserver.AddLicenseServer(server)
 
-	if err != nil {
-		log.Error().Msgf("error while validating license secrets for discovery engine, error: %s", err.Error())
-		go serve(lis, server)
-		_ = license.LCfg.WatchFeatures()
-		os.Exit(1)
+		// check for license secret, if exist then validate
+		err := license.CheckLicenseSecret()
+
+		if err != nil {
+			log.Error().Msgf("error while validating license secrets for discovery engine, error: %s", err.Error())
+			go serve(lis, server)
+			_ = license.LCfg.WatchFeatures()
+			os.Exit(1)
+		}
+
+		go license.LCfg.WatchLicenseValidity()
 	}
-
-	go license.LCfg.WatchLicenseValidity()
 
 	server = grpcserver.AddServers(server)
 	serve(lis, server)
