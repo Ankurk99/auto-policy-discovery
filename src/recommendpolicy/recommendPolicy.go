@@ -179,6 +179,13 @@ func RecommendPolicyMain() {
 		}
 
 		// crownjewel.GetMountPaths(client)
+		action := "Allow"
+		log.Info().Msg("\n\n............\n\n")
+
+		policy := crownjewel.GetSensitiveAssetsPolicies(d.Name, d.Namespace, action, d.Spec.Template.Labels)
+		log.Info().Msgf("\n\n POLICY \n\n", policy)
+
+		log.Info().Msg("\n\n............\n\n")
 
 		mountPaths, err := crownjewel.GetMountPaths(client, d.Name, d.Namespace, d.Spec.Template.Labels)
 		if err != nil {
