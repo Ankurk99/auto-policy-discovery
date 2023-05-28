@@ -3,6 +3,10 @@ package admissioncontrollerpolicy
 import (
 	"context"
 	"fmt"
+	"path/filepath"
+	"regexp"
+	"strings"
+
 	"github.com/accuknox/auto-policy-discovery/src/cluster"
 	cfg "github.com/accuknox/auto-policy-discovery/src/config"
 	"github.com/accuknox/auto-policy-discovery/src/libs"
@@ -17,10 +21,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apiextensions-apiserver/pkg/apis/apiextensions"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"path/filepath"
-	"regexp"
 	"sigs.k8s.io/yaml"
-	"strings"
 )
 
 var log *zerolog.Logger
@@ -196,7 +197,7 @@ func ShouldSATokenBeAutoMounted(namespace string, labels types.LabelMap) bool {
 				Type:          "process,file",
 			})
 			if err != nil {
-				log.Warn().Msgf("Error getting summary data for pod %s, container %s, namespace %s: %s", pod.Name, container.Name, pod.Namespace, err.Error())
+				// log.Warn().Msgf("Error getting summary data for pod %s, container %s, namespace %s: %s", pod.Name, container.Name, pod.Namespace, err.Error())
 				return true
 			}
 			log.Info().Msgf("Fetched Summary data for pod %s, container %s, namespace %s", pod.Name, container.Name, pod.Namespace)

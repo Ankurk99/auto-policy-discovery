@@ -126,6 +126,12 @@ func RecommendPolicyMain() {
 
 	nsNotFilter := cfg.CurrentCfg.ConfigSysPolicy.NsNotFilter
 	client := cluster.ConnectK8sClient()
+	pods, err := client.CoreV1().Pods("").List(context.Background(), metav1.ListOptions{})
+	if err != nil {
+		log.Error().Msg(err.Error())
+		return
+	}
+
 	deployments, err := client.AppsV1().Deployments("").List(context.Background(), metav1.ListOptions{})
 	if err != nil {
 		log.Error().Msg(err.Error())
@@ -156,6 +162,14 @@ func RecommendPolicyMain() {
 	systempolicy.UpdateSysPolicies(policies)
 
 	admissioncontrollerpolicy.InitAdmissionControllerPolicyDiscoveryConfiguration()
+
+	for _, p := range pods.Items {
+		_, err := crownjewel.GetMountPaths(client, p.Name, p.Namespace, p.ObjectMeta.Labels)
+		if err != nil {
+			log.Error().Msg("Error getting mount paths, err=" + err.Error())
+		}
+	}
+
 	for _, d := range deployments.Items {
 		deploy := uniqueNsDeploy(d.Name, d.Namespace)
 
@@ -177,25 +191,6 @@ func RecommendPolicyMain() {
 			isNamespaceAllowed(d.Namespace, nsNotFilterAdmissionControllerPolicy, nsFilterAdmissionControllerPolicy) {
 			generateAdmissionControllerPolicy(d.Name, d.Namespace, d.Spec.Template.Labels)
 		}
-
-		// crownjewel.GetMountPaths(client)
-		action := "Allow"
-		log.Info().Msg("\n\n............\n\n")
-
-		policy := crownjewel.GetSensitiveAssetsPolicies(d.Name, d.Namespace, action, d.Spec.Template.Labels)
-		log.Info().Msgf("\n\n POLICY \n\n", policy)
-
-		log.Info().Msg("\n\n............\n\n")
-
-		mountPaths, err := crownjewel.GetMountPaths(client, d.Name, d.Namespace, d.Spec.Template.Labels)
-		if err != nil {
-			log.Error().Msg("Error getting mount paths, err=" + err.Error())
-		}
-		log.Info().Msg("\n\n\n^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
-
-		// print the mount paths
-		log.Info().Msgf("Mount paths: %v\n", mountPaths)
-		log.Info().Msgf("\n\n\n$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$\n\n")
 	}
 }
 
