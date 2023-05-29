@@ -23,27 +23,6 @@ import (
 // CfgDB is the global variable representing the configuration of the database
 var CfgDB types.ConfigDB
 
-// type containerMountPath struct {
-// 	podName       string
-// 	podNamespace  string
-// 	containerName string
-// 	mountPath     string
-// }
-
-//	func mountPathUsed(containersSATokenMountPath []containerMountPath, sumResponses []*opb.Response) bool {
-//		for _, containerMountPath := range containersSATokenMountPath {
-//			for _, sumResp := range sumResponses {
-//				for _, fileData := range sumResp.FileData {
-//					if sumResp.ContainerName == containerMountPath.containerName {
-//						if containerMountPath.mountPath == fileData.Destination {
-//							return true
-//						}
-//					}
-//				}
-//			}
-//		}
-//		return false
-//	}
 type LabelMap = map[string]string
 
 func getProcessList(client kubernetes.Interface, namespace string, labels types.LabelMap) ([]string, error) {
@@ -80,8 +59,10 @@ func getProcessList(client kubernetes.Interface, namespace string, labels types.
 	return processList, nil
 }
 
-func usedMountPath(client kubernetes.Interface, namespace string, labels types.LabelMap) ([]string, error) {
+func usedMountPath(client kubernetes.Interface, namespace string, labels types.LabelMap) ([]string, map[string]string, error) {
 	var sumResponses []string
+	fromSource := make(map[string]string)
+
 	podList, err := client.CoreV1().Pods("").List(context.Background(), metav1.ListOptions{
 		LabelSelector: libs.LabelMapToString(labels),
 	})
@@ -104,11 +85,11 @@ func usedMountPath(client kubernetes.Interface, namespace string, labels types.L
 
 			for _, fileData := range sumResp.FileData {
 				sumResponses = append(sumResponses, fileData.Destination)
+				fromSource[fileData.Destination] = fileData.Source
 			}
 		}
 	}
-	fmt.Println("\n--------- Sumresponses------------\n", sumResponses)
-	return sumResponses, nil
+	return sumResponses, fromSource, nil
 }
 
 func getVolumeMountPaths(client kubernetes.Interface, labels LabelMap) ([]string, error) {
@@ -124,15 +105,11 @@ func getVolumeMountPaths(client kubernetes.Interface, labels LabelMap) ([]string
 	for _, pod := range podList.Items {
 		for _, container := range pod.Spec.Containers {
 			for _, volumeMount := range container.VolumeMounts {
-				// fmt.Printf("\n---------------------------------------------\n")
-				fmt.Printf("\n\n%s:%s\n", container.Name, volumeMount.MountPath)
+				// fmt.Printf("\n\n%s:%s\n", container.Name, volumeMount.MountPath)
 				mountPaths = append(mountPaths, volumeMount.MountPath)
-				// fmt.Printf("\n---------------------------------------------\n")
 			}
 		}
 	}
-	fmt.Println("\n--------- Labels ------------", labels)
-	fmt.Println("\n--------- MountPaths ------------", mountPaths)
 	return mountPaths, nil
 }
 
@@ -162,7 +139,7 @@ func GetMountPaths(client kubernetes.Interface, name, namespace string, labels L
 	action := "Allow"
 
 	// mount paths being used (from observability)
-	sumResp, _ := usedMountPath(client, namespace, labels)
+	sumResp, fromSrc, _ := usedMountPath(client, namespace, labels)
 
 	// total mount paths being used (from k8s cluster)
 	mnt, _ := getVolumeMountPaths(client, labels)
@@ -173,21 +150,7 @@ func GetMountPaths(client kubernetes.Interface, name, namespace string, labels L
 	// process paths being used and are present in observability data
 	matchedProcessPaths, _ := getProcessList(client, namespace, labels)
 
-	if matchedMountPaths == nil {
-		action = "Block"
-	}
-
-	fmt.Println("\n\n sumResp: \n", sumResp)
-
-	fmt.Println("\n\n MATCHED PATHS: \n", matchedMountPaths)
-
-	// fmt.Printf("\n*************************************************\n")
-
-	for _, matchedMountPts := range mnt {
-		for _, matchedProcess := range matchedProcessPaths {
-			policies = append(policies, createCrownjewelPolicy(ms, name, namespace, action, labels, matchedMountPts, matchedProcess))
-		}
-	}
+	policies = append(policies, createCrownjewelPolicy(ms, name, namespace, action, labels, mnt, matchedMountPaths, matchedProcessPaths, fromSrc))
 
 	jsonData, err := json.Marshal(policies)
 	if err != nil {
@@ -223,9 +186,9 @@ func GetMountPaths(client kubernetes.Interface, name, namespace string, labels L
 // 	return result
 // }
 
-func buildSystemPolicy(name, ns, action string, labels LabelMap, matchDirs types.KnoxMatchDirectories, matchPaths types.KnoxMatchPaths) types.KnoxSystemPolicy {
+func buildSystemPolicy(name, ns, action string, labels LabelMap, matchDirs []types.KnoxMatchDirectories, matchPaths []types.KnoxMatchPaths) types.KnoxSystemPolicy {
 	return types.KnoxSystemPolicy{
-		APIVersion: "security.kubearmor.com/v1",
+		APIVersion: "v1",
 		Kind:       "KubeArmorPolicy",
 		Metadata: map[string]string{
 			"name":      "autopol-assets-" + name,
@@ -235,38 +198,81 @@ func buildSystemPolicy(name, ns, action string, labels LabelMap, matchDirs types
 			Severity: 7,
 			Selector: types.Selector{
 				MatchLabels: labels},
-			Action:  "Allow",
+			Action:  "Allow", // global action - default Allow
 			Message: "Sensitive assets and process control policy",
 			File: types.KnoxSys{
-				MatchDirectories: []types.KnoxMatchDirectories{matchDirs},
+				MatchDirectories: matchDirs,
 			},
 			Process: types.KnoxSys{
-				MatchPaths: []types.KnoxMatchPaths{matchPaths},
+				MatchPaths: matchPaths,
 			},
 		},
 	}
 }
 
-func createCrownjewelPolicy(ms types.MatchSpec, name, namespace, action string, labels LabelMap, matchedMountPts string, matchedProcessPts string) types.KnoxSystemPolicy {
-	matchDirs := types.KnoxMatchDirectories{
-		Dir:        matchedMountPts,
-		Recursive:  true,
-		FromSource: nil,
-		Action:     action,
+func createCrownjewelPolicy(ms types.MatchSpec, name, namespace, action string, labels LabelMap, matchedDirPts, matchedMountPts, matchedProcessPts []string, fromSrc map[string]string) types.KnoxSystemPolicy {
+	var matchDirs []types.KnoxMatchDirectories
+	for _, dirpath := range matchedDirPts {
+		action = "Block"
+		for _, mountPt := range matchedMountPts {
+			if dirpath == mountPt {
+				action = "Allow"
+				break
+			}
+		}
+
+		var fromSourceVal []types.KnoxFromSource
+		for key, value := range fromSrc {
+			if strings.Contains(key, dirpath) {
+				// Check if the value already exists in fromSourceVal
+				exists := false
+				for _, existing := range fromSourceVal {
+					if existing.Path == value {
+						exists = true
+						break
+					}
+				}
+				if !exists {
+					fromSourceVal = append(fromSourceVal, types.KnoxFromSource{Path: value})
+				}
+			}
+		}
+
+		matchDir := types.KnoxMatchDirectories{
+			Dir:        dirpath + "/",
+			Recursive:  true,
+			FromSource: fromSourceVal,
+			Action:     action,
+		}
+
+		if action == "Allow" {
+			// Block that dir from global access
+			matchAllowedDir := types.KnoxMatchDirectories{
+				Dir:       dirpath + "/",
+				Recursive: true,
+				Action:    "Block",
+			}
+			matchDirs = append(matchDirs, matchAllowedDir)
+		}
+
+		matchDirs = append(matchDirs, matchDir)
 	}
 
-	// var matchPaths []types.KnoxMatchPaths
+	// default allow access to root directory "/"
+	matchDir := types.KnoxMatchDirectories{
+		Dir:       "/",
+		Recursive: true,
+	}
 
-	// for _, processPath := range matchedProcessPts {
-	// 	matchPath := types.KnoxMatchPaths{
-	// 		Path: processPath,
-	// 	}
-	// 	matchPaths = append(matchPaths, matchPath)
-	// }
+	matchDirs = append(matchDirs, matchDir)
 
-	matchPaths := types.KnoxMatchPaths{
-		Path:   matchedProcessPts,
-		Action: "Allow",
+	var matchPaths []types.KnoxMatchPaths
+	for _, processpath := range matchedProcessPts {
+		matchPath := types.KnoxMatchPaths{
+			Path:   processpath,
+			Action: "Allow",
+		}
+		matchPaths = append(matchPaths, matchPath)
 	}
 	policy := buildSystemPolicy(name, namespace, action, labels, matchDirs, matchPaths)
 	return policy
